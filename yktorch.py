@@ -110,8 +110,8 @@ class BoundedParameter(OverriddenParameter):
         :param kwargs:
         """
         super().__init__(**kwargs)
-        self.lb = npt.tensor(lb)
-        self.ub = npt.tensor(ub)
+        self.lb = None if lb == -np.inf else npt.tensor(lb)
+        self.ub = None if ub == np.inf else npt.tensor(ub)
         self.skip_loading_lbub = skip_loading_lbub
         self._param = nn.Parameter(self.data2param(data),
                                    requires_grad=requires_grad)
@@ -124,7 +124,8 @@ class BoundedParameter(OverriddenParameter):
         lb = self.lb
         ub = self.ub
         data = enforce_float_tensor(data)
-        if lb is None and ub is None:  # Unbounded
+
+        if (lb is None) and (ub is None):  # Unbounded
             return data
         elif lb is None:
             data[data > ub - self.epsilon] = ub - self.epsilon
@@ -741,6 +742,10 @@ class BoundedModule(nn.Module):
             v1 = v1.reshape(size)
             dict1[k] = v1
         return dict1
+
+    def grad_vec(self):
+        ps = self.parameters()
+        return torch.cat([p.grad.flatten() for p in ps])
 
 
 def enforce_float_tensor(v: Union[torch.Tensor, np.ndarray], device=None
